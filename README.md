@@ -3,7 +3,7 @@
 
 1. Clone o repositório:
    ```
-   git clone <url-do-repositorio>
+   git clone https://github.com/Marcella-Queiroz/App-Instrumentos.git
    ```
 2. Instale as dependências:
    ```
