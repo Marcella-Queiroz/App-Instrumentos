@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ThemeProvider } from '@react-navigation/native';
 import { DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { Stack } from 'expo-router';
-import {useColorScheme} from '@/components/useColorScheme';
+import { useColorScheme } from '../components/useColorScheme';
 import LoginScreen from './login';
 
 export default function RootLayoutNav() {

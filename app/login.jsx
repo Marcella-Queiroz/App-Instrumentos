@@ -5,18 +5,18 @@ const instruments = [
   'Guitarra/Violão', 'Baixo', 'Bateria', 'Teclado', 'Piano', 'Violino', 'Flauta', 'Saxofone', 'Trompete', 'Outros'
 ];
 
-export default function LoginScreen({ onLogin }: { onLogin: () => void }) {
-  const [tab, setTab] = useState<'login' | 'register'>('login');
+export default function LoginScreen({ onLogin }) {
+  const [tab, setTab] = useState('login');
   const [form, setForm] = useState({
     name: '',
     email: '',
     password: '',
     whatsapp: '',
     location: '',
-    interests: [] as string[],
+    interests: [],
   });
 
-  const handleCheckbox = (instrument: string) => {
+  const handleCheckbox = (instrument) => {
     setForm((prev) => ({
       ...prev,
       interests: prev.interests.includes(instrument)
