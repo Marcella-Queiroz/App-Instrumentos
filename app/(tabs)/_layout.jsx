@@ -4,8 +4,12 @@ import { Link, Tabs } from 'expo-router';
 import { Pressable } from 'react-native';
 
 import Colors from '../../constants/Colors';
-import { useColorScheme } from '../../components/useColorScheme';
-import { useClientOnlyValue } from '../../components/useClientOnlyValue';
+import { useColorScheme } from 'react-native';
+
+function useClientOnlyValue(staticValue, clientValue) {
+  // Sempre retorna o valor do client, pois não há ambiente web
+  return clientValue;
+}
 
 // You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
 function TabBarIcon(props) {
