@@ -1,12 +1,76 @@
 import React, { useState } from 'react';
+import { useRouter } from 'expo-router';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Button, ScrollView, Image } from 'react-native';
 
 const instruments = [
   'Guitarra/Violão', 'Baixo', 'Bateria', 'Teclado', 'Piano', 'Violino', 'Flauta', 'Saxofone', 'Trompete', 'Outros'
 ];
 
+const API_URL = 'http://localhost:3001/api/usuario';
+
+async function handleRegister(form, onLogin, setError) {
+  setError({});
+  try {
+    const res = await fetch(`${API_URL}/cadastro`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nome: form.name,
+        email: form.email,
+        senha: form.password,
+        whatsapp: form.whatsapp,
+        localizacao: form.location,
+        interesses: form.interests,
+      }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      alert(data.mensagem);
+      onLogin();
+    } else {
+      if (data.erro.includes('Email')) {
+        setError({ email: data.erro });
+      } else if (data.erro.includes('senha')) {
+        setError({ password: data.erro });
+      } else {
+        setError({ geral: data.erro });
+      }
+    }
+  } catch (err) {
+    setError({ geral: 'Erro ao cadastrar' });
+  }
+}
+
+async function handleLogin(form, onLogin, setError) {
+  setError({});
+  try {
+    const res = await fetch(`${API_URL}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: form.email, senha: form.password }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      alert(data.mensagem);
+      onLogin();
+    } else {
+      if (data.erro.includes('Email')) {
+        setError({ email: data.erro });
+      } else if (data.erro.includes('senha')) {
+        setError({ password: data.erro });
+      } else {
+        setError({ geral: data.erro });
+      }
+    }
+  } catch (err) {
+    setError({ geral: 'Erro ao logar' });
+  }
+}
+// ...existing code...
+
 export default function LoginScreen({ onLogin }) {
   const [tab, setTab] = useState('login');
+  const [error, setError] = useState({});
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -15,6 +79,7 @@ export default function LoginScreen({ onLogin }) {
     location: '',
     interests: [],
   });
+  const router = useRouter();
 
   const handleCheckbox = (instrument) => {
     setForm((prev) => ({
@@ -26,8 +91,9 @@ export default function LoginScreen({ onLogin }) {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.card}>
+    <View style={{ flex: 1 }}>
+      <ScrollView contentContainerStyle={styles.container}>
+        <View style={styles.card}>
               <View style={styles.logoContainer}>
         <Image
           source={require('../assets/images/LogoTuneTrade.png')}
@@ -59,6 +125,7 @@ export default function LoginScreen({ onLogin }) {
               value={form.name}
               onChangeText={name => setForm({ ...form, name })}
             />
+            {error.name && <Text style={styles.error}>{error.name}</Text>}
             <TextInput
               style={styles.input}
               placeholder="Email"
@@ -67,6 +134,7 @@ export default function LoginScreen({ onLogin }) {
               keyboardType="email-address"
               autoCapitalize="none"
             />
+            {error.email && <Text style={styles.error}>{error.email}</Text>}
             <TextInput
               style={styles.input}
               placeholder="Senha"
@@ -74,6 +142,7 @@ export default function LoginScreen({ onLogin }) {
               onChangeText={password => setForm({ ...form, password })}
               secureTextEntry
             />
+            {error.password && <Text style={styles.error}>{error.password}</Text>}
             <TextInput
               style={styles.input}
               placeholder="WhatsApp"
@@ -81,12 +150,14 @@ export default function LoginScreen({ onLogin }) {
               onChangeText={whatsapp => setForm({ ...form, whatsapp })}
               keyboardType="phone-pad"
             />
+            {error.whatsapp && <Text style={styles.error}>{error.whatsapp}</Text>}
             <TextInput
               style={styles.input}
               placeholder="Localização"
               value={form.location}
               onChangeText={location => setForm({ ...form, location })}
             />
+            {error.location && <Text style={styles.error}>{error.location}</Text>}
             <Text style={styles.label}>Instrumentos de interesse</Text>
             <View style={styles.checkboxContainer}>
               {instruments.map((inst, idx) => (
@@ -103,7 +174,7 @@ export default function LoginScreen({ onLogin }) {
                 </TouchableOpacity>
               ))}
             </View>
-            <TouchableOpacity style={styles.button} onPress={onLogin}>
+            <TouchableOpacity style={styles.button} onPress={() => handleRegister(form, onLogin)}>
               <Text style={styles.buttonText}>Cadastrar</Text>
             </TouchableOpacity>
           </>
@@ -125,7 +196,7 @@ export default function LoginScreen({ onLogin }) {
               onChangeText={password => setForm({ ...form, password })}
               secureTextEntry
             />
-            <TouchableOpacity style={styles.button} onPress={onLogin}>
+            <TouchableOpacity style={styles.button} onPress={() => handleLogin(form, onLogin)}>
               <Text style={styles.buttonText}>Entrar</Text>
             </TouchableOpacity>
             <Text style={styles.demoText}>
@@ -134,8 +205,16 @@ export default function LoginScreen({ onLogin }) {
             </Text>
           </>
         )}
-      </View>
-    </ScrollView>
+        </View>
+      </ScrollView>
+      {/* Botão para pular login/cadastro */}
+      <TouchableOpacity
+        style={styles.skipButton}
+        onPress={onLogin}
+      >
+        <Text style={styles.skipButtonText}>Pular</Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
@@ -265,5 +344,26 @@ const styles = StyleSheet.create({
     color: '#888',
     textAlign: 'center',
     marginTop: 8,
+  },
+  error: {
+    color: 'red',
+    fontSize: 12,
+    marginBottom: 4,
+    marginLeft: 4,
+  },
+  skipButton: {
+    position: 'absolute',
+    bottom: 32,
+    right: 32,
+    backgroundColor: '#888',
+    paddingVertical: 12,
+    paddingHorizontal: 28,
+    borderRadius: 30,
+    elevation: 3,
+  },
+  skipButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });

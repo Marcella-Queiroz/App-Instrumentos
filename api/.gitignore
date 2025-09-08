@@ -1,3 +1,0 @@
-'node_modules/
-.env
-' | Out-File -Encoding utf8 .gitignore
