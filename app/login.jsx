@@ -6,66 +6,14 @@ const instruments = [
   'Guitarra/Violão', 'Baixo', 'Bateria', 'Teclado', 'Piano', 'Violino', 'Flauta', 'Saxofone', 'Trompete', 'Outros'
 ];
 
-const API_URL = 'http://localhost:3001/api/usuario';
-
-async function handleRegister(form, onLogin, setError) {
-  setError({});
-  try {
-    const res = await fetch(`${API_URL}/cadastro`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        nome: form.name,
-        email: form.email,
-        senha: form.password,
-        whatsapp: form.whatsapp,
-        localizacao: form.location,
-        interesses: form.interests,
-      }),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      alert(data.mensagem);
-      onLogin();
-    } else {
-      if (data.erro.includes('Email')) {
-        setError({ email: data.erro });
-      } else if (data.erro.includes('senha')) {
-        setError({ password: data.erro });
-      } else {
-        setError({ geral: data.erro });
-      }
-    }
-  } catch (err) {
-    setError({ geral: 'Erro ao cadastrar' });
-  }
-}
-
-async function handleLogin(form, onLogin, setError) {
-  setError({});
-  try {
-    const res = await fetch(`${API_URL}/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: form.email, senha: form.password }),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      alert(data.mensagem);
-      onLogin();
-    } else {
-      if (data.erro.includes('Email')) {
-        setError({ email: data.erro });
-      } else if (data.erro.includes('senha')) {
-        setError({ password: data.erro });
-      } else {
-        setError({ geral: data.erro });
-      }
-    }
-  } catch (err) {
-    setError({ geral: 'Erro ao logar' });
-  }
-}
+// FUTURA IMPLEMENTAÇÃO DE API:
+// const API_URL = 'http://localhost:3001/api/usuario';
+// async function handleRegister(form, onLogin, setError) {
+//   ...
+// }
+// async function handleLogin(form, onLogin, setError) {
+//   ...
+// }
 // ...existing code...
 
 export default function LoginScreen({ onLogin }) {
@@ -174,7 +122,8 @@ export default function LoginScreen({ onLogin }) {
                 </TouchableOpacity>
               ))}
             </View>
-            <TouchableOpacity style={styles.button} onPress={() => handleRegister(form, onLogin)}>
+            {/* FUTURA IMPLEMENTAÇÃO DE API: handleRegister(form, onLogin) */}
+            <TouchableOpacity style={styles.button} onPress={onLogin}>
               <Text style={styles.buttonText}>Cadastrar</Text>
             </TouchableOpacity>
           </>
@@ -196,7 +145,8 @@ export default function LoginScreen({ onLogin }) {
               onChangeText={password => setForm({ ...form, password })}
               secureTextEntry
             />
-            <TouchableOpacity style={styles.button} onPress={() => handleLogin(form, onLogin)}>
+            {/* FUTURA IMPLEMENTAÇÃO DE API: handleLogin(form, onLogin) */}
+            <TouchableOpacity style={styles.button} onPress={onLogin}>
               <Text style={styles.buttonText}>Entrar</Text>
             </TouchableOpacity>
             <Text style={styles.demoText}>

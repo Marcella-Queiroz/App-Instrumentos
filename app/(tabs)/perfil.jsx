@@ -88,6 +88,7 @@ export default function Perfil() {
               <View style={styles.rowBetween}>
                 <Text style={styles.userName}>{mockUser.nome}</Text>
 
+                {/* FUTURA IMPLEMENTAÇÃO DE API: editar perfil */}
                 <TouchableOpacity style={styles.editBtn} activeOpacity={0.85}>
                   <Feather name="edit-2" size={14} color={COLORS.brand} />
                   <Text style={styles.editText}>Editar</Text>

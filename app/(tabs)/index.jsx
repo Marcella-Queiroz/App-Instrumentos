@@ -138,4 +138,3 @@ const styles = StyleSheet.create({
   safetyTitle: { fontWeight: 'bold', color: '#b45309' },
   safetyText: { fontSize: 13, color: '#92400e', marginTop: 4, lineHeight: 18 },
 });
-

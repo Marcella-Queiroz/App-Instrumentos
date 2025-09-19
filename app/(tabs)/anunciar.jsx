@@ -130,6 +130,7 @@ export default function Anunciar() {
           keyboardType="numeric"
         />
 
+        {/* FUTURA IMPLEMENTAÇÃO DE API: publicar anúncio */}
         <TouchableOpacity style={styles.button}>
           <Text style={styles.buttonText}>Publicar anúncio</Text>
         </TouchableOpacity>

@@ -1,8 +1,11 @@
-import { Text, View } from 'react-native';
+import { useEffect } from 'react';
+import { useRouter } from 'expo-router';
+
 export default function Sair() {
-	return (
-		<View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-			<Text>Sair</Text>
-		</View>
-	);
+	const router = useRouter();
+	useEffect(() => {
+		// FUTURA IMPLEMENTAÇÃO: Limpar autenticação do usuário
+		router.replace('login');
+	}, [router]);
+	return null;
 }
