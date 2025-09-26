@@ -1,4 +1,3 @@
-// app/(tabs)/anunciar.jsx
 import React, { useState, useEffect } from "react";
 import {
   View, Text, TextInput, Button, Image, ScrollView, Alert,

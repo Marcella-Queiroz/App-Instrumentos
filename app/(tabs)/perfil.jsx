@@ -88,7 +88,6 @@ export default function Perfil() {
               <View style={styles.rowBetween}>
                 <Text style={styles.userName}>{mockUser.nome}</Text>
 
-                {/* FUTURA IMPLEMENTAÇÃO DE API: editar perfil */}
                 <TouchableOpacity style={styles.editBtn} activeOpacity={0.85}>
                   <Feather name="edit-2" size={14} color={COLORS.brand} />
                   <Text style={styles.editText}>Editar</Text>
@@ -99,7 +98,9 @@ export default function Perfil() {
                 <Ionicons name="star" size={14} color="#F2B705" />
                 <Text style={styles.inlineText}>
                   {mockUser.rating}{" "}
-                  <Text style={styles.muted}>({mockUser.avaliacoes} avaliações)</Text>
+                  <Text style={styles.muted}>
+                    ({mockUser.avaliacoes} avaliações)
+                  </Text>
                 </Text>
                 <View style={styles.dot} />
                 <MaterialIcons
@@ -157,7 +158,10 @@ export default function Perfil() {
             onPress={() => setTab("anuncios")}
           >
             <Text
-              style={[styles.segmentText, tab === "anuncios" && styles.segmentTextActive]}
+              style={[
+                styles.segmentText,
+                tab === "anuncios" && styles.segmentTextActive,
+              ]}
             >
               Anúncios
             </Text>
@@ -167,7 +171,10 @@ export default function Perfil() {
             onPress={() => setTab("avaliacoes")}
           >
             <Text
-              style={[styles.segmentText, tab === "avaliacoes" && styles.segmentTextActive]}
+              style={[
+                styles.segmentText,
+                tab === "avaliacoes" && styles.segmentTextActive,
+              ]}
             >
               Avaliações
             </Text>
@@ -197,7 +204,6 @@ export default function Perfil() {
           />
         ) : (
           <>
-            {/* Título e botão Avaliar */}
             <View style={styles.reviewsHeader}>
               <Text style={styles.sectionTitle}>Avaliações recebidas</Text>
               <TouchableOpacity style={styles.reviewBtn} activeOpacity={0.85}>
@@ -205,7 +211,6 @@ export default function Perfil() {
               </TouchableOpacity>
             </View>
 
-            {/* Lista de avaliações */}
             <FlatList
               data={mockReviews}
               keyExtractor={(i) => i.id}
@@ -221,7 +226,6 @@ export default function Perfil() {
 }
 
 /** --- Componentes auxiliares --- */
-
 function ReviewCard({ item }) {
   return (
     <View style={styles.reviewCard}>
@@ -258,7 +262,6 @@ function ReviewCard({ item }) {
 /** --- Estilos --- */
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: COLORS.bg },
-
   userCard: {
     backgroundColor: COLORS.card,
     marginHorizontal: 14,
@@ -278,7 +281,6 @@ const styles = StyleSheet.create({
   },
   avatarText: { color: COLORS.muted, fontWeight: "700" },
   userName: { color: COLORS.text, fontSize: 16, fontWeight: "700" },
-
   editBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -291,7 +293,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   editText: { color: COLORS.brand, fontWeight: "600" },
-
   rowBetween: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   inlineRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 5 },
   inlineText: { color: COLORS.text },
@@ -303,7 +304,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.stroke,
     marginHorizontal: 4,
   },
-
   chipsWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 6 },
   chip: {
     backgroundColor: COLORS.chip,
@@ -314,7 +314,6 @@ const styles = StyleSheet.create({
     borderColor: COLORS.stroke,
   },
   chipText: { color: COLORS.brand, fontWeight: "600" },
-
   statsRow: { flexDirection: "row", gap: 10, marginHorizontal: 14, marginTop: 10 },
   statCard: {
     flex: 1,
@@ -328,7 +327,6 @@ const styles = StyleSheet.create({
   },
   statValue: { color: COLORS.text, fontSize: 18, fontWeight: "700" },
   statLabel: { color: COLORS.muted, fontSize: 12 },
-
   segment: {
     marginHorizontal: 14,
     marginTop: 12,
@@ -348,7 +346,6 @@ const styles = StyleSheet.create({
   segmentActive: { backgroundColor: COLORS.chip },
   segmentText: { color: COLORS.muted, fontWeight: "600" },
   segmentTextActive: { color: COLORS.brand },
-
   adCard: {
     backgroundColor: COLORS.card,
     padding: 12,
@@ -358,7 +355,6 @@ const styles = StyleSheet.create({
   },
   adTitle: { color: COLORS.brand, fontWeight: "700" },
   adPrice: { color: COLORS.brand, marginBottom: 4 },
-
   reviewsHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -377,7 +373,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   reviewBtnText: { color: COLORS.brand, fontWeight: "600" },
-
   reviewCard: {
     backgroundColor: COLORS.card,
     padding: 12,
@@ -398,7 +393,6 @@ const styles = StyleSheet.create({
   reviewMeta: { color: COLORS.muted },
   dotSmall: { color: COLORS.muted, marginHorizontal: 2 },
   reviewText: { color: COLORS.brand, marginTop: 6 },
-
   reviewActions: {
     flexDirection: "row",
     gap: 10,

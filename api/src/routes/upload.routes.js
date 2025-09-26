@@ -1,4 +1,3 @@
-// api/src/routes/upload.routes.js (ESM)
 import { Router } from 'express';
 import multer from 'multer';
 import path from 'path';

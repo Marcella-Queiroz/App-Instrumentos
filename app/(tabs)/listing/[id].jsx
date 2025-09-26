@@ -1,4 +1,4 @@
-// app/(tabs)/listing/[id].jsx
+/*
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -131,7 +131,7 @@ export default function ListingDetail() {
 
   return (
     <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
-      {/* Galeria simples */}
+      {/* Galeria simples *//*}/*
       <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false}>
         {photos.length ? (
           photos.map((p, i) => (
@@ -174,4 +174,4 @@ export default function ListingDetail() {
       </View>
     </ScrollView>
   );
-}
+}*/
