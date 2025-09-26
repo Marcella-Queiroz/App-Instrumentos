@@ -21,7 +21,7 @@ function CustomHeader() {
         <Text style={styles.headerTitle}>TuneTrade</Text>
       </View>
       <View style={styles.headerRight}>
-        <View style={styles.userInitial}>
+        <View className="userInitial" style={styles.userInitial}>
           <Text style={styles.userInitialText}>JS</Text>
         </View>
         <FontAwesome name="star" size={16} color="#facc15" />

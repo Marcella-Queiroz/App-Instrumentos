@@ -1,24 +1,11 @@
-import { useState } from 'react';
-import { ThemeProvider } from '@react-navigation/native';
-import { DarkTheme, DefaultTheme } from '@react-navigation/native';
-import { Stack } from 'expo-router';
-import { useColorScheme } from 'react-native';
-import LoginScreen from './login';
+// app/_layout.jsx
+import { Stack } from "expo-router";
+import { AuthProvider } from "../contexts/AuthContext";
 
-export default function RootLayoutNav() {
-  const colorScheme = useColorScheme();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  if (!isAuthenticated) {
-    return <LoginScreen onLogin={() => setIsAuthenticated(true)} />;
-  }
-
+export default function RootLayout() {
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-      </Stack>
-    </ThemeProvider>
+    <AuthProvider>
+      <Stack screenOptions={{ headerShown: false }} />
+    </AuthProvider>
   );
 }

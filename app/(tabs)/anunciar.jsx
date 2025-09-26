@@ -1,219 +1,363 @@
-import * as ImagePicker from "expo-image-picker";
-import { Image } from "react-native";
-import React, { useState } from "react";
+// app/(tabs)/anunciar.jsx
+import React, { useState, useEffect } from "react";
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
+  View, Text, TextInput, Button, Image, ScrollView, Alert,
+  Pressable, ActivityIndicator, KeyboardAvoidingView, Platform
 } from "react-native";
-import { Picker } from "@react-native-picker/picker";
-import { FontAwesome } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
+import { api, loadToken } from "../../lib/api";
+
+// Normaliza a condição p/ o enum do back: novo | semi-novo | usado
+function normalizeCondition(input) {
+  const c = String(input || "").trim().toLowerCase();
+  if (c.includes("semi")) return "semi-novo";
+  if (c.includes("usad")) return "usado";
+  if (c.includes("nov")) return "novo";
+  return "usado"; // fallback seguro
+}
+
+// === logger de erros p/ terminal ===
+function logErr(tag, err) {
+  try {
+    console.log(`\n======= ${tag} ERROR =======`);
+    console.log("message:", err?.message);
+
+    if (err?.isAxiosError) {
+      const { config, request, response } = err;
+      console.log("isAxiosError:", true);
+      if (config) {
+        const fullUrl = config?.baseURL ? `${config.baseURL}${config.url}` : config?.url;
+        console.log("config.method:", config?.method);
+        console.log("config.url:", fullUrl);
+        console.log("config.headers:", config?.headers);
+        console.log("config.data:", config?.data);
+      }
+      if (response) {
+        console.log("response.status:", response?.status);
+        console.log("response.headers:", response?.headers);
+        console.log("response.data:", response?.data);
+      } else if (request) {
+        console.log("response: <sem resposta> (houve request)");
+      } else {
+        console.log("request/response ausentes");
+      }
+    } else {
+      if (err?.status) console.log("status:", err.status);
+      if (err?.body) console.log("body:", err.body);
+      console.log("stack:", err?.stack);
+    }
+  } catch (inner) {
+    console.log("Falha ao logar erro:", inner?.message);
+  } finally {
+    console.log("======= end error log =======\n");
+  }
+}
+
+// Converte "1.234,56" / "1200,00" / "1200" para Number
+function parseBRLToNumber(input) {
+  if (typeof input === "number") return input;
+  if (!input) return NaN;
+  const s = String(input).trim();
+
+  if (/,/.test(s)) {
+    const clean = s.replace(/\./g, "").replace(",", ".");
+    const n = Number(clean);
+    return isNaN(n) ? NaN : n;
+  }
+  const clean = s.replace(/[^\d.]/g, "");
+  const n = Number(clean);
+  return isNaN(n) ? NaN : n;
+}
 
 export default function Anunciar() {
-  const [categoria, setCategoria] = useState("");
-  const [estado, setEstado] = useState("");
-  const [tipo, setTipo] = useState("");
-  const [titulo, setTitulo] = useState("");
-  const [descricao, setDescricao] = useState("");
-  const [preco, setPreco] = useState("");
-  const [fotos, setFotos] = useState([]); // Estado para as fotos
+  // Debug de rede/token (remova depois)
+  useEffect(() => {
+    console.log("API baseURL =>", api.defaults.baseURL);
+    api.get("/saude")
+      .then(r => console.log("SAUDE OK:", r.data))
+      .catch(e => console.log("SAUDE ERR:", e.message));
 
-  // Função para abrir a galeria e selecionar fotos
-  const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsMultipleSelection: true,
-      selectionLimit: 4,
-      quality: 1,
+    loadToken().then(t => {
+      console.log("TOKEN PRESENTE?", !!t, t ? `len=${t.length}` : "");
     });
+  }, []);
 
-    if (!result.canceled) {
-      setFotos(result.assets);
+  // formulário
+  const [title, setTitle] = useState("");
+  const [price, setPrice] = useState("");
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("Guitarra");
+  const [condition, setCondition] = useState("Usado");
+  const [city, setCity] = useState("");
+
+  // imagens locais selecionadas
+  const [assets, setAssets] = useState([]); // [{ uri, width, height, ... }]
+  const [loading, setLoading] = useState(false);
+
+  async function ensureMediaPermission() {
+    const lib = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (lib.status !== "granted") {
+      Alert.alert("Permissão necessária", "Conceda acesso às fotos para selecionar imagens.");
+      return false;
     }
-  };
+    return true;
+  }
 
+  async function pickFromLibrary() {
+    const ok = await ensureMediaPermission();
+    if (!ok) return;
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaType.Images,
+      allowsEditing: true,
+      quality: 0.7,
+    });
+    if (!result.canceled) {
+      setAssets((prev) => [...prev, ...result.assets]);
+    }
+  }
+
+  async function pickFromCamera() {
+    const cam = await ImagePicker.requestCameraPermissionsAsync();
+    if (cam.status !== "granted") {
+      Alert.alert("Permissão necessária", "Conceda acesso à câmera para tirar a foto.");
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      quality: 0.7,
+    });
+    if (!result.canceled) {
+      setAssets((prev) => [...prev, ...result.assets]);
+    }
+  }
+
+  function removeAsset(index) {
+    setAssets((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  // --- Upload com AXIOS + FormData (principal) ---
+  async function uploadImageAxios(uri) {
+    const normalized = Platform.OS === "ios" && uri.startsWith("file://")
+      ? uri.replace("file://", "")
+      : uri;
+
+    const name = (normalized.split("/").pop() || `photo_${Date.now()}.jpg`).toLowerCase();
+    const type = name.endsWith(".png") ? "image/png" : "image/jpeg";
+
+    const form = new FormData();
+    form.append("file", { uri: normalized, name, type });
+
+    const { data } = await api.post("/upload", form);
+    console.log("UPLOAD RESP (axios):", data);
+    return data.url; // caminho relativo: "/uploads/xxx.jpg"
+  }
+
+  // --- Fallback com fetch (se o Axios der "Network Error") ---
+  async function uploadImageFetch(uri) {
+    const normalized = Platform.OS === "ios" && uri.startsWith("file://")
+      ? uri.replace("file://", "")
+      : uri;
+
+    const name = (normalized.split("/").pop() || `photo_${Date.now()}.jpg`).toLowerCase();
+    const type = name.endsWith(".png") ? "image/png" : "image/jpeg";
+
+    const form = new FormData();
+    form.append("file", { uri: normalized, name, type });
+
+    const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/upload`, {
+      method: "POST",
+      body: form,
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Upload HTTP ${res.status}: ${text}`);
+    }
+    const data = await res.json();
+    console.log("UPLOAD RESP (fetch):", data);
+    return data.url; // caminho relativo
+  }
+
+  // Criar anúncio
+  async function handleCreate() {
+    const priceNumber = parseBRLToNumber(price);
+    if (!title.trim() || isNaN(priceNumber) || priceNumber <= 0) {
+      Alert.alert("Campos obrigatórios", "Informe título e um preço válido (ex.: 1200 ou 1.200,00).");
+      return;
+    }
+    if (!city.trim()) {
+      Alert.alert("Campos obrigatórios", "Informe a cidade.");
+      return;
+    }
+    if (assets.length === 0) {
+      Alert.alert("Imagens", "Adicione ao menos uma foto.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // 1) Upload das imagens (Axios com fallback em fetch)
+      const uploadedUrls = [];
+      for (const [idx, a] of assets.entries()) {
+        console.log(`>> Subindo imagem ${idx + 1}/${assets.length}:`, a.uri);
+        let url;
+        try {
+          url = await uploadImageAxios(a.uri);
+        } catch (err) {
+          logErr("UPLOAD (axios)", err);
+          url = await uploadImageFetch(a.uri);
+        }
+        console.log(`<< Upload OK: ${url}`);
+        uploadedUrls.push(url);
+      }
+
+      // 2) Token obrigatório
+      const token = await loadToken();
+      if (!token) {
+        Alert.alert("Sessão", "Faça login para publicar seu anúncio.");
+        return;
+      }
+
+      // 3) Converter fotos para URL absoluta (Joi exige URI válida)
+      const base = (process.env.EXPO_PUBLIC_API_URL || "").replace(/\/$/, "");
+      const photosAbsolute = uploadedUrls.map((p) =>
+        p.startsWith("http") ? p : `${base}${p}`
+      );
+
+      // 4) Montar payload padronizado
+      const payload = {
+        title: title.trim(),
+        description: description.trim(),
+        price: priceNumber,                              // número validado
+        category: category.trim().toLowerCase(),
+        condition: normalizeCondition(condition),        // enum suportado
+        city: city.trim(),
+        photos: photosAbsolute,                          // URIs absolutas
+      };
+
+      console.log("PAYLOAD /listings =>", JSON.stringify(payload, null, 2));
+
+      // 5) Enviar
+      await api.post("/listings", payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      Alert.alert("Sucesso", "Anúncio criado!");
+      setTitle(""); setPrice(""); setDescription(""); setCity("");
+      setAssets([]);
+    } catch (e) {
+      logErr("CREATE LISTING", e);
+      const serverMsg =
+        e?.response?.data?.message ||
+        e?.response?.data?.error ||
+        (Array.isArray(e?.response?.data?.details)
+          ? e.response.data.details.map(d => d.message).join("\n")
+          : null);
+      Alert.alert("Erro", serverMsg || e?.message || "Falha ao criar anúncio.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // ======= JSX do componente (fora da handleCreate) =======
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.formBox}>
-        <Text style={styles.title}>Anunciar instrumento</Text>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={80}
+    >
+      <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
+        <Text style={{ fontSize: 20, fontWeight: "700" }}>Criar anúncio</Text>
 
-        <Text style={styles.label}>Fotos do instrumento</Text>
-        <TouchableOpacity style={styles.photoBox} onPress={pickImage}>
-          <FontAwesome name="camera" size={24} color="#222" />
-          <Text style={styles.photoText}>Adicionar fotos</Text>
-        </TouchableOpacity>
-        <Text style={styles.photoLimit}>
-          Máximo 4 fotos. A primeira será a foto principal.
-        </Text>
+        <Text style={{ fontWeight: "600" }}>Título</Text>
+        <TextInput
+          placeholder="Ex.: Guitarra Stratocaster"
+          value={title}
+          onChangeText={setTitle}
+          style={{ borderWidth: 1, borderColor: "#ddd", borderRadius: 8, padding: 10 }}
+        />
 
-        {/* Exibe as fotos selecionadas */}
-        {fotos.length > 0 && (
-          <View style={{ flexDirection: "row", marginBottom: 10 }}>
-            {fotos.map((foto, idx) => (
-              <View key={idx} style={{ marginRight: 8 }}>
-                <Image
-                  source={{ uri: foto.uri }}
-                  style={{ width: 60, height: 60, borderRadius: 8 }}
-                />
-              </View>
-            ))}
+        <Text style={{ fontWeight: "600" }}>Preço (R$)</Text>
+        <TextInput
+          placeholder="Ex.: 1.200,00"
+          keyboardType="numeric"
+          value={price}
+          onChangeText={setPrice}
+          style={{ borderWidth: 1, borderColor: "#ddd", borderRadius: 8, padding: 10 }}
+        />
+
+        <Text style={{ fontWeight: "600" }}>Descrição</Text>
+        <TextInput
+          placeholder="Fale sobre o instrumento"
+          value={description}
+          onChangeText={setDescription}
+          multiline
+          numberOfLines={4}
+          style={{
+            borderWidth: 1,
+            borderColor: "#ddd",
+            borderRadius: 8,
+            padding: 10,
+            textAlignVertical: "top",
+          }}
+        />
+
+        <Text style={{ fontWeight: "600" }}>Categoria</Text>
+        <TextInput
+          placeholder="Ex.: Guitarra, Violão, Teclado…"
+          value={category}
+          onChangeText={setCategory}
+          style={{ borderWidth: 1, borderColor: "#ddd", borderRadius: 8, padding: 10 }}
+        />
+
+        <Text style={{ fontWeight: "600" }}>Condição</Text>
+        <TextInput
+          placeholder="Novo / Usado / Semi-novo"
+          value={condition}
+          onChangeText={setCondition}
+          style={{ borderWidth: 1, borderColor: "#ddd", borderRadius: 8, padding: 10 }}
+        />
+
+        <Text style={{ fontWeight: "600" }}>Cidade</Text>
+        <TextInput
+          placeholder="Ex.: Maringá - PR"
+          value={city}
+          onChangeText={setCity}
+          style={{ borderWidth: 1, borderColor: "#ddd", borderRadius: 8, padding: 10 }}
+        />
+
+        <View style={{ flexDirection: "row", gap: 10, marginTop: 4 }}>
+          <Button title="📸 Câmera" onPress={pickFromCamera} />
+          <Button title="🖼️ Galeria" onPress={pickFromLibrary} />
+        </View>
+
+        {assets.length > 0 && (
+          <View style={{ marginTop: 12, gap: 8 }}>
+            <Text style={{ fontWeight: "600" }}>Pré-visualização ({assets.length})</Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {assets.map((a, i) => (
+                <Pressable key={i} onLongPress={() => removeAsset(i)}>
+                  <Image source={{ uri: a.uri }} style={{ width: 100, height: 100, borderRadius: 8 }} />
+                  <Text style={{ fontSize: 12, color: "#888", textAlign: "center" }}>segure p/ remover</Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
         )}
 
-        <Text style={styles.label}>Título do anúncio*</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Ex: Guitarra Fender Stratocaster"
-          value={titulo}
-          onChangeText={setTitulo}
-        />
-
-        <Text style={styles.label}>Descrição*</Text>
-        <TextInput
-          style={[styles.input, { height: 80 }]}
-          placeholder="Descreva o instrumento, estado de conservação, acessórios inclusos..."
-          value={descricao}
-          onChangeText={setDescricao}
-          multiline
-        />
-
-        <Text style={styles.label}>Categoria*</Text>
-        <View style={styles.pickerWrapper}>
-          <Picker
-            selectedValue={categoria}
-            style={styles.picker}
-            onValueChange={(itemValue) => setCategoria(itemValue)}
-          >
-            <Picker.Item label="Selecione a categoria" value="" />
-            <Picker.Item label="Guitarra" value="guitarra" />
-            <Picker.Item label="Baixo" value="baixo" />
-            <Picker.Item label="Teclado" value="teclado" />
-          </Picker>
+        <View style={{ marginTop: 16 }}>
+          {loading ? (
+            <View style={{ paddingVertical: 12 }}>
+              <ActivityIndicator size="large" />
+              <Text style={{ textAlign: "center", marginTop: 8 }}>
+                Enviando imagens e criando anúncio…
+              </Text>
+            </View>
+          ) : (
+            <Button title="📣 Publicar anúncio" onPress={handleCreate} />
+          )}
         </View>
-
-        <Text style={styles.label}>Estado do instrumento*</Text>
-        <View style={styles.pickerWrapper}>
-          <Picker
-            selectedValue={estado}
-            style={styles.picker}
-            onValueChange={(itemValue) => setEstado(itemValue)}
-          >
-            <Picker.Item label="Selecione o estado" value="" />
-            <Picker.Item label="Novo" value="novo" />
-            <Picker.Item label="Usado" value="usado" />
-          </Picker>
-        </View>
-
-        <Text style={styles.label}>Tipo de negociação*</Text>
-        <View style={styles.pickerWrapper}>
-          <Picker
-            selectedValue={tipo}
-            style={styles.picker}
-            onValueChange={(itemValue) => setTipo(itemValue)}
-          >
-            <Picker.Item label="Selecione o tipo" value="" />
-            <Picker.Item label="Venda" value="venda" />
-            <Picker.Item label="Troca" value="troca" />
-            <Picker.Item label="Doação" value="doacao" />
-          </Picker>
-        </View>
-
-        <Text style={styles.label}>Preço (R$)*</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="0,00"
-          value={preco}
-          onChangeText={setPreco}
-          keyboardType="numeric"
-        />
-
-        {/* FUTURA IMPLEMENTAÇÃO DE API: publicar anúncio */}
-        <TouchableOpacity style={styles.button}>
-          <Text style={styles.buttonText}>Publicar anúncio</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-    backgroundColor: "#fff",
-  },
-  formBox: {
-    backgroundColor: "#fafafd",
-    borderRadius: 18,
-    padding: 20,
-    marginBottom: 30,
-    shadowColor: "#000",
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 20,
-  },
-  label: {
-    marginTop: 15,
-    marginBottom: 5,
-    fontWeight: "500",
-  },
-  photoBox: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    borderStyle: "dashed",
-    padding: 15,
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 5,
-  },
-  photoText: {
-    marginTop: 10,
-    color: "#222",
-    fontWeight: "bold",
-    textAlign: "center",
-  },
-  photoLimit: {
-    fontSize: 12,
-    color: "#888",
-    marginBottom: 10,
-  },
-  input: {
-    backgroundColor: "#f5f5f7",
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 5,
-  },
-  pickerWrapper: {
-    backgroundColor: "#f5f5f7",
-    borderRadius: 8,
-    marginBottom: 5,
-    overflow: "hidden",
-  },
-  picker: {
-    height: 50,
-    width: "100%",
-  },
-  button: {
-    backgroundColor: "#0a0a14",
-    borderRadius: 8,
-    padding: 15,
-    alignItems: "center",
-    marginTop: 25,
-    marginBottom: 30,
-  },
-  buttonText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-});
